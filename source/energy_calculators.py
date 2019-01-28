@@ -44,6 +44,7 @@ class EnergyCalc(object):
         from pycp2k import CP2K
         calc = CP2K()
         calc.working_directory = self.input.dict['working_directory']
+        py_version = sys.version_info[0]
         # Determine if using less than max_processers would be better
         if (int(self.input.dict['atoms_per_process']) != 0):
             natoms = len(self.config.atom)
@@ -61,7 +62,14 @@ class EnergyCalc(object):
         calc.mpi_n_processes = processes
         self.config.atom.set_calculator(calc)
         # load in cp2k options
-        execfile(self.input.dict['cp2k_input'])
+        if (py_version < 3):
+                execfile(self.input.dict['cp2k_input'])
+        else:
+                with open(self.input.dict['cp2k_input']) as c_i:
+                    code = compile(c_i.read(),
+                        self.input.dict['cp2k_input'],
+                        'exec')
+                    exec(code)
         calc.project_name = self.config.file_name
         calc.write_input_file()
         # If we only want the input file written, then we stop here
