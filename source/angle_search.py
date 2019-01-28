@@ -285,7 +285,7 @@ class AngleSearch(object):
                 if (self.input.dict['angle_write_energy_file'] == 'True'
                         and not Exist):
                     angle_energy = open(
-                        self.input.dict['project_name'] + '.a_e.log', 'a', 0)
+                        self.input.dict['project_name'] + '.a_e.log', 'a')
                     angle_energy.write(str(j) + '   ' +
                                        str(temp_storage.energy)
                                        + '    ' +

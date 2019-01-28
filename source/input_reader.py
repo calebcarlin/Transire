@@ -204,8 +204,7 @@ class ReadInput(object):
             sys.exit(1)
 
         if (float(self.dict['separation']) < 0.0):
-            printx('Error: separation can not be negative')
-            sys.exit(1)
+            printx('Warning: separation is negative')
 
         if (int(self.dict['max_atoms']) <= 0):
             printx('Error: max_atoms must be greater than 0')
