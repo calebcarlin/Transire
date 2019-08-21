@@ -15,6 +15,7 @@ Requirements
 ==============
 
 Python 2.7 or newer
+        some features require Python3
 
 ASE 3.12 or newer
 
@@ -38,6 +39,11 @@ lammpslib
         copy the file into your local library folder, usually
         ~/.local/lib/python2.7/site-packages which is where python installs
         the other libraries
+
+Scikit-learn (optional)
+        python library required for using Gaussian process regression
+        in the surface splitter method.
+
 
 Installation
 ==============

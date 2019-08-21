@@ -12,7 +12,7 @@ if sys.version_info < (2, 6, 0, 'final', 0):
     raise SystemExit('Python 2.6 or later is required!')
 
 setup(name='transire',
-      version='1.0',
+      version='1.1',
       description="Interface and electron transport tools",
       author="Caleb Carlin",
       author_email='caleb.m.carlin.ctr@mail.mil',
