@@ -112,7 +112,7 @@ class EnergyCalc(object):
         A file that gives the LAMMPS commands as a list of strings is needed.
         """
         try:
-            from lammpslib import LAMMPSlib
+            from ase.calculators.lammpslib import LAMMPSlib
         except Exception as err:
             printx("Could not import lammpslib")
             sys.exit(1)
@@ -127,10 +127,10 @@ class EnergyCalc(object):
             parallel = False
 
         # load the LAMMPS specific commands.  If file not found,
-        # then we close things right away so we don't waste effort
+        # then we close things right away so we don't waste effort.
         try:
-            exec(compile(open(self.input.dict['lammps_input']).read(),
-                 self.input.dict['lammps_input'], 'exec'))
+            with open(self.input.dict['lammps_input']) as cmds:
+                commands = [x.rstrip() for x in cmds.readlines()]
         except Exception as err:
             printx("ERROR: couldn't find or load lammps input file")
             sys.exit(1)
@@ -140,7 +140,8 @@ class EnergyCalc(object):
         commands.append('change_box all boundary p p m')
         output_file = self.config.file_name + '.log'
         calc = LAMMPSlib(lmpcmds=commands,
-                         log_file=output_file, keep_alive=False)
+                         log_file=output_file, keep_alive=False,
+                         lammps_name='serial')
 
         self.config.atom.set_calculator(calc)
         if (parallel):

@@ -20,10 +20,16 @@ class ReadInput(object):
                      'crys_b_layers': 3,
                      'cp2k_input': None,
                      'separation': 0.0,
+                     'read_in_structure': 'False',
+                     'read_in_file': None,
+                     'read_in_sep_plane': None,
+                     'read_in_exclude_vacuum': 'False',
+                     'read_in_crys_a_layer_depth': None,
+                     'read_in_crys_b_layer_depth': None,
                      'max_mpi_processes': 32,
                      'atoms_per_process': 13,
                      'working_directory': "./",
-                     'project_name': "default_name",
+                     'project_name': "defaultname",
                      'range_surface_h_a': None,
                      'range_surface_k_a': None,
                      'range_surface_l_a': None,
@@ -48,6 +54,7 @@ class ReadInput(object):
                      'angle_write_coord_file': 'True',
                      'angle_calculate_energy': 'True',
                      'angle_write_restart': 'True',
+                     'angle_axis' : 'z',
                      'exclude_coupling': 'False',
                      'energy_levels_ET': None,
                      'restart_file': 'ET_restart_coord',
@@ -60,7 +67,6 @@ class ReadInput(object):
                      'sep_initial_step': 0.1,
                      'markov_type': 2,
                      'print_debug': 'False',
-                     'remove_duplicates': 'False',
                      'ras_factor': 5,
                      'ras_depth': 1,
                      'ras_energy': 'True',
@@ -86,7 +92,19 @@ class ReadInput(object):
                      'angle_optimize_separation': 'True',
                      'full_periodicity': 'False',
                      'z_axis_vacuum' : '0.0',
-                     'et_method': 'ASE'}
+                     'et_method': 'ASE',
+                     'flip_separation' : 10.0,
+                     'flip_a_depth' : 1.5,
+                     'flip_b_depth' : 1.5,
+                     'flip_file_name' : 'flip_default',
+                     'flip_n_random_states' : 10,
+                     'flip_n_total_states' : 10,
+                     'flip_n_final_reduction' : 1,
+                     'flip_restart' : 'False',
+                     'flip_length_scale' : 0.01,
+                     'flip_length_scale_bounds' : '1e-5 1e5',
+                     'flip_rand_method' : 'multi-atom',
+                     'flip_n_final_passes' : 1}
 
         # inputs to convert to tuples
         self.tuples = ['crys_a_surface',
@@ -102,7 +120,8 @@ class ReadInput(object):
         # inputs to convert to a list of floats
         self.lists = ['angles_list',
                       'search_list',
-                      'energy_levels_ET'
+                      'energy_levels_ET',
+                      'flip_length_scale_bounds'
                       ]
 
         # inputs that are required
@@ -120,7 +139,6 @@ class ReadInput(object):
                          'exclude_coupling',
                          'calc_insert_energy',
                          'print_debug',
-                         'remove_duplicates',
                          'ras_energy',
                          'ras_all_angles',
                          'surface_search',
@@ -132,7 +150,10 @@ class ReadInput(object):
                          'calculate_binding_energy',
                          'orthonormal_overlap',
                          'full_periodicity',
-                         'angle_optimize_separation']
+                         'angle_optimize_separation',
+                         'read_in_structure',
+                         'read_in_exclude_vacuum',
+                         'calculate_binding_energy']
 
     def read_input(self, file_name):
         """
@@ -197,7 +218,7 @@ class ReadInput(object):
     def error_check(self):
         if (int(self.dict['crys_a_layers']) <= 0):
             printx('Error: crys_a_layers must be 1 or greater')
-            sys.ext(1)
+            sys.exit(1)
 
         if (int(self.dict['crys_b_layers']) <= 0):
             printx('Error: crys_b_layers must be 1 or greater')
@@ -232,6 +253,23 @@ class ReadInput(object):
                        ' values specified')
                 sys.exit(1)
 
+        if (self.dict['read_in_structure'] is not 'False'):
+            if (self.dict['read_in_file'] is None):
+                printx('Error: no file specified to read in structure')
+                sys.exit(1)
+
+        if (self.dict['read_in_crys_a_layer_depth'] is not None and
+                self.dict['read_in_crys_b_layer_depth'] is None):
+                printx('Error: must specify a layer depth for both'
+                       ' sides when reading in an interface')
+                sys.exit(1)
+        
+        if (self.dict['read_in_crys_b_layer_depth'] is not None and
+                self.dict['read_in_crys_a_layer_depth'] is None):
+                printx('Error: must specify a layer depth for both'
+                       ' sides when reading in an interface')
+                sys.exit(1)
+
         if almost_zero(float(self.dict['separation']) -
                        float(self.dict['sep_guess'])):
             printx(
@@ -252,4 +290,21 @@ class ReadInput(object):
             if (self.dict[i] != 'True' and self.dict[i] != 'False'):
                 printx('Error: {0} must be either True or False'.format(i))
                 sys.exit(1)
+
+        if int(self.dict['flip_n_random_states']) > int(
+            self.dict['flip_n_total_states']):
+                printx('Error: number of total flip states must be' 
+                    ' greater than or equal to number of random states')
+                sys.exit(1)
+
+        if (self.dict['flip_rand_method'] != 'multi-atom' and
+            self.dict['flip_rand_method'] != 'single-atom'):
+                printx('Error: flip_rand_method must be either'
+                    ' "multi-atom" or "single-atom"')
+                sys.exit(1)
+
+        if int(self.dict['flip_n_final_reduction']) < 0:
+            printx("Error: flip_n_final_reduction can't be negative")
+            sys.exit(1)
+
         return

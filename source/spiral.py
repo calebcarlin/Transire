@@ -74,11 +74,13 @@ class Hyperspiral(object):
                 else:
                     # skip the z = 0 spot since we already did that
                     self.position = [0, 0, self.z_range[self.z_spot + 1]]
-                    self.z_spot += 2
+                    self.z_spot += 1
             else:
                 raise Exception('Completed spiral without filling cell')
         # get the next displacement
-        dx, dy = next(self.movement)
+            dx, dy = 0,0
+        else:
+            dx, dy = next(self.movement)
         self.position = list(map(add, self.position, [dx, dy, 0]))
         while self.out_of_bounds():
             dx, dy = next(self.movement)

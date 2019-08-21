@@ -69,9 +69,9 @@ class ElectronTransport(object):
             self.input.dict['restart_path'] +
             self.interface.file_name + '.out')
         # determine the important dimensions
-        llead_dimens, llead_apl, llead_number = self.determine_dimensions(
+        llead_apl, llead_number = self.determine_dimensions(
             unit_cell_a, 1)
-        rlead_dimens, rlead_apl, rlead_number = self.determine_dimensions(
+        rlead_apl, rlead_number = self.determine_dimensions(
             unit_cell_b, 2)
         # gather what we need from the last output of the whole system energy
         # calculation and the initial unit cells
@@ -84,9 +84,9 @@ class ElectronTransport(object):
         Total_basis = 0
         for i in scatter_basis:
             Total_basis += scatter_basis[i] * scatter_number[i]
-        N1 = abs(int((basis_a / llead_dimens[2, 2]) *
+        N1 = abs(int(basis_a *
                  int(self.input.dict['number_of_layers_a'])))
-        N2 = abs(int((basis_b / rlead_dimens[2, 2]) *
+        N2 = abs(int(basis_b *
                  int(self.input.dict['number_of_layers_b'])))
         N = int(Total_basis - N1 - N2)
 
@@ -404,41 +404,43 @@ class ElectronTransport(object):
 
     def determine_dimensions(self, unit_cell, tag):
         """
-        use interface_cell /unit_cell to get x and y dimensions
-        use number of atoms per layer to calculate number of layers.
+        use depth of layer to determine how many atoms of each kind
+        and the total number of atoms in the layer
         """
         interface_cell = self.interface.atom.cell
         # determine the orthorhombic representation calling
         # protect_periodicity from interface.py
         side_cell = self.call_protect_periodicity(unit_cell)
         lead_num = {}
-
-        x_dimens = interface_cell[0, 0] / side_cell[0, 0]
-        x_dimens = np.around(x_dimens)
-        y_dimens = interface_cell[1, 1] / side_cell[1, 1]
-        y_dimens = np.around(y_dimens)
-
-        atom_count = 0
-        assign_array = self.interface.atom.get_tags()
+        atoms_per_layer = 0
+        #create dictionary so we can add up numbder of each element
         element_array = self.interface.atom.get_chemical_symbols()
-        temp = set(element_array)
-        for j in temp:
+        #cut down the list to a set of each element included
+        element_set = set(element_array)
+        for j in element_set:
             lead_num[j] = 0
-        for i in range(len(assign_array)):
-            if (assign_array[i] == tag):
-                atom_count += 1
-                lead_num[element_array[i]] = lead_num[element_array[i]] + 1
-        atoms_per_layer = x_dimens * y_dimens * len(unit_cell)
-        layers = atom_count / atoms_per_layer
-        P = np.eye(3)
-        P[0, 0] = x_dimens
-        P[1, 1] = y_dimens
-        P[2, 2] = layers
 
-        return P, atoms_per_layer, lead_num
+        if tag == 1:
+            low_val = np.amin(self.interface.atom.get_positions()[:,2])-0.01
+            low_val_layer = low_val - side_cell.cell[2,2]
+        else:
+            high_val = np.amax(self.interface.atom.get_positions()[:,2])+0.01
+            high_val_layer = high_val - side_cell.cell[2,2]
+
+        for i in self.interface.atom:
+            if i.tag == 1:
+                if (i.position[2] < low_val_layer and i.position[2] >= low_val):
+                    atoms_per_layer += 1
+                    lead_num[i.symbol] += 1
+            elif i.tag == 2:
+                if (i.position[2] > high_val_layer and i.position[2] <= high_val):
+                    atoms_per_layer += 1
+                    lead_num[i.symbol] += 1
+
+        return atoms_per_layer, lead_num
 
     def call_protect_periodicity(self, unit_cell):
-        """We need to call an instance of the intercace builder
+        """We need to call an instance of the interface builder
         so that we can use protect_periodicity to find the
         orthorhombic representation of the unit cell"""
 

@@ -23,7 +23,7 @@ from .energy_calculators import EnergyCalc, calculate_binding_energy
 from .angle_search import AngleSearch
 from .insert_molecule import InsertMolecule
 from .separation_optimizer import SeparationOpt
-
+from .surface_splitter import surface_atom_flip
 
 def main():
     """
@@ -59,15 +59,20 @@ def main():
 
 # building initial structure
 # ==========================
-    Crystal1 = read(input.dict['crys_a_file'])
-    Crystal2 = read(input.dict['crys_b_file'])
+    if input.dict['read_in_structure'] == "False":
+        Crystal1 = read(input.dict['crys_a_file'])
+        Crystal2 = read(input.dict['crys_b_file'])
+    else:
+        Crystal1 = Atoms(pbc=[1,1,1])
+        Crystal2 = Atoms(pbc=[1,1,1])
 
     BB = InterfaceSupercell(Crystal1, Crystal2, input)
     BB.cut_surface(BB.surface_a, BB.surface_b)
+
     try:
         BB.generate_interface()
     except Exception as err:
-        [printx(x, input.dict['output_file']) for x in err.args]
+        [printx(str(x), input.dict['output_file']) for x in err.args]
         if (input.dict['ignore_initial_structure'] != 'False'):
             input.dict['calculate_initial_energy'] = 'False'
         else:
@@ -127,6 +132,8 @@ def main():
                         lowest_energy_config = IM.mol_insert()
                     elif (i == 3.0):
                         SeparationOpt(lowest_energy_config, input, x, y)
+                    elif(i == 4.0):
+                        surface_atom_flip(input,lowest_energy_config)
                     else:
                         printx('Invalid number given for search_list')
 # ET calculation

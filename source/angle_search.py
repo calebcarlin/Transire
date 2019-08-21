@@ -1,5 +1,5 @@
 # copyright Caleb Michael Carlin (2018)
-# Released uder Lesser Gnu Public License (LGPL)
+# Released under Lesser Gnu Public License (LGPL)
 # See LICENSE file for details.
 
 from ase import Atoms
@@ -99,9 +99,6 @@ class AngleSearch(object):
             self.input.dict['starting_angle'] = start_angle_backup
             return
         else:
-            print('xgeox')
-            print(ras_array)
-            print(self.is_ras)
             while len(ras_array[0]) > int(self.input.dict['ras_factor']):
                 largest = max(
                     xrange(len(ras_array[1])), key=ras_array[1].__getitem__)

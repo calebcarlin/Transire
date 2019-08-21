@@ -13,10 +13,10 @@ from ase.build import cut, make_supercell
 from ase.build import stack, surface
 from .utilities import lcm, printx, angle_between, surface_from_ase
 from .utilities import almost_zero
+from .utilities import InterfaceConfigStorage as ICS
 from ase.io import write as ase_write
-#import sympy
+from ase.io import read as ase_read
 from traceback import print_exc
-import re
 import sys
 from .spiral import Hyperspiral
 
@@ -28,9 +28,9 @@ class InterfaceSupercell(object):
     Parameters:
 
     unit_cell_a: ASE atoms object
-        unit cell atoms object for the top side of the interface
-    unit_cell_b: ASE atoms object
         unit cell atoms object for the bottom side of the interface
+    unit_cell_b: ASE atoms object
+        unit cell atoms object for the top side of the interface
     input: InputReader object
         object with read in keywords
     """
@@ -46,8 +46,8 @@ class InterfaceSupercell(object):
         self.surface_b = input.dict['crys_b_surface']
         self.interface = None
         self.distance = float(input.dict['separation'])
-        self.super_cell1 = None
-        self.super_cell2 = None
+        self.super_cell_a = None
+        self.super_cell_b = None
         self.input = input
         self.duplicates = []
         self.ase_version = self.determine_version()
@@ -56,10 +56,13 @@ class InterfaceSupercell(object):
         """
         cut the raw unit cell to produce the cut unit cell
         """
-        self.cut_cell_a = surface_from_ase(
-            self.raw_cell_a, surface_a, layers=1)
-        self.cut_cell_b = surface_from_ase(
-            self.raw_cell_b, surface_b, layers=1)
+        if self.input.dict['read_in_structure'] != 'False':
+            return
+        else:
+            self.cut_cell_a = surface_from_ase(
+                self.raw_cell_a, surface_a, layers=1)
+            self.cut_cell_b = surface_from_ase(
+                self.raw_cell_b, surface_b, layers=1)
 
     def generate_interface(self):
         """
@@ -67,121 +70,117 @@ class InterfaceSupercell(object):
         Returns .True. if an error occured, otherwise returns .False.
         """
 
-        # set up the output file so we can put the error messages
-        # in the output file
-        file = self.input.dict['output_file']
-
-        # copy over the atom units so that cut_cells are unchanged
-        unit_cell_a = self.cut_cell_a.copy()
-        unit_cell_b = self.cut_cell_b.copy()
-
-        # remove small numbers from computer error
-#        unit_cell_a.cell = self.check_zero_diag(unit_cell_a.cell)
-#        unit_cell_a = self.check_cell_rotation(unit_cell_a, unit_cell_b)
-
-        # =====Debug=====
-        if (self.input.dict['print_debug'] != 'False'):
-            printx("========Starting Cell 1========")
-            printx(str(unit_cell_a.cell))
-            printx("atoms = " + str(len(unit_cell_a)))
-            printx("========Starting Cell 2========")
-            printx(str(unit_cell_b.cell))
-            printx("atoms = " + str(len(unit_cell_b)))
-
-        # replicate the unit cells so that periodicity is always preserved
-        periodic_cell_a, max_coeff_a = self.protect_periodicity(unit_cell_a)
-        periodic_cell_b, max_coeff_b = self.protect_periodicity(unit_cell_b)
-
-        # populate the new cell using cookie cutter method on generated lattice
-        try:
-            self.super_cell1 = self.populate_new_cell(
-                unit_cell_a, periodic_cell_a, max_coeff_a)
-            self.super_cell2 = self.populate_new_cell(
-                unit_cell_b, periodic_cell_b, max_coeff_b)
-        except Exception as err:
-            [printx(x) for x in err.args]
-            raise Exception("Too many atoms, skipping to next step")
-
-        # =====Debug=====
-        if (self.input.dict['print_debug'] != 'False'):
-            printx("========Ortho Cell 1========")
-            printx(str(self.super_cell1.cell))
-            printx("atoms = " + str(len(self.super_cell1)))
-            printx("========Ortho Cell 2========")
-            printx(str(self.super_cell2.cell))
-            printx("atoms = " + str(len(self.super_cell2)))
-
-        # calculate the smallest supercells needed to minimize
-        # stress in the interface
-        P_list, R_list = self.generate_interface_transform(
-            self.super_cell1, self.super_cell2)
-        P_tuple = tuple(P_list + [int(self.input.dict['crys_a_layers'])])
-        R_tuple = tuple(R_list + [int(self.input.dict['crys_b_layers'])])
-        # generate new supercells
-        try:
-            self.super_cell1 *= P_tuple
-        except Exception as err:
-            raise Exception(
-                "Error in generating supercell_a in interface step")
-        try:
-            self.super_cell2 *= R_tuple
-        except Exception as err:
-            raise Exception(
-                "Error in generating supercell_b in interface step")
-
-        # =====Debug=====
-        if (self.input.dict['print_debug'] != 'False'):
-            printx("Replication A = " + str(P_tuple))
-            printx("Replication B = " + str(R_tuple))
-
-        # check that total size isn't too big before we continue
-        total = len(self.super_cell1) + len(self.super_cell2)
-        if (total >= int(self.input.dict['max_atoms'])):
-            raise Exception("Error: interface is too large: " + str(total))
-
-        # tag the two supercells so that they can be separated later
-        self.super_cell1.set_tags(1)
-        self.super_cell2.set_tags(2)
-
-
-        # add a vacuum between the layers.
-        if (self.distance is not None):
-            self.super_cell1.cell[2, 2] += self.distance
-
-        # =====Debug=====
-        if (self.input.dict['print_debug'] != 'False'):
-            printx("========Super Cell 1========")
-            printx(str(self.super_cell1.cell))
-            printx("atoms = " + str(len(self.super_cell1)))
-            printx("========Super Cell 2========")
-            printx(str(self.super_cell2.cell))
-            printx("atoms = " + str(len(self.super_cell2)))
-
-        # stack the supercells on top of each other and set pbc to xy-slab
-        try:
-            self.interface, self.super_cell1, self.supercell2 = stack(
-                self.super_cell1, self.super_cell2,
-                output_strained=True, maxstrain=None)
-        except Exception as err:
-            raise Exception(
-                "Error in generating interface during the stack step")
-
-        # set pbc to infinite slab or fully periodic setting
-        if (self.input.dict['full_periodicity'] != 'False'):
-            self.interface.pbc = [1, 1, 1]
-        else:
-            self.interface.pbc = [1, 1, 0]
-
-        #add explicit vacuum above and below 
-        if (self.input.dict['z_axis_vacuum'] != '0.0'):
-            self.interface = self.z_insert_vacuum(self.interface)
-
-        # use merge sort to identify and remove duplicate atoms.
-        if (self.input.dict['remove_duplicates'] != 'False'):
+        #check to see if we need to build structure or just read in
+        if self.input.dict['read_in_structure'] != 'True':
+            # set up the output file so we can put the error messages
+            # in the output file
+            file = self.input.dict['output_file']
+    
+            # copy over the atom units so that cut_cells are unchanged
+            unit_cell_a = self.cut_cell_a.copy()
+            unit_cell_b = self.cut_cell_b.copy()
+    
+            # =====Debug=====
+            if (self.input.dict['print_debug'] != 'False'):
+                printx("========Starting Cell 1========")
+                printx(str(unit_cell_a.cell))
+                printx("atoms = " + str(len(unit_cell_a)))
+                printx("========Starting Cell 2========")
+                printx(str(unit_cell_b.cell))
+                printx("atoms = " + str(len(unit_cell_b)))
+    
+            # replicate the unit cells so that periodicity is always preserved
+            periodic_cell_a, max_coeff_a = self.protect_periodicity(unit_cell_a)
+            periodic_cell_b, max_coeff_b = self.protect_periodicity(unit_cell_b)
+    
+            # populate the new cell using cookie cutter method on generated lattice
             try:
-                self.remove_duplicates(self.interface)
+                self.super_cell_a = self.populate_new_cell(
+                    unit_cell_a, periodic_cell_a, max_coeff_a)
+                self.super_cell_b = self.populate_new_cell(
+                    unit_cell_b, periodic_cell_b, max_coeff_b)
             except Exception as err:
-                raise Exception("Error in checking for atom overlaps")
+                [printx(x) for x in err.args]
+                raise Exception("Too many atoms, skipping to next step")
+    
+            # =====Debug=====
+            if (self.input.dict['print_debug'] != 'False'):
+                printx("========Ortho Cell 1========")
+                printx(str(self.super_cell_a.cell))
+                printx("atoms = " + str(len(self.super_cell_a)))
+                printx("========Ortho Cell 2========")
+                printx(str(self.super_cell_b.cell))
+                printx("atoms = " + str(len(self.super_cell_b)))
+    
+            # calculate the smallest supercells needed to minimize
+            # stress in the interface
+            P_list, R_list = self.generate_interface_transform(
+                self.super_cell_a, self.super_cell_b)
+            P_tuple = tuple(P_list + [int(self.input.dict['crys_a_layers'])])
+            R_tuple = tuple(R_list + [int(self.input.dict['crys_b_layers'])])
+            # generate new supercells
+            try:
+                self.super_cell_a *= P_tuple
+            except Exception as err:
+                raise Exception(
+                    "Error in generating supercell_a in interface step")
+            try:
+                self.super_cell_b *= R_tuple
+            except Exception as err:
+                raise Exception(
+                    "Error in generating supercell_b in interface step")
+    
+            # =====Debug=====
+            if (self.input.dict['print_debug'] != 'False'):
+                printx("Replication A = " + str(P_tuple))
+                printx("Replication B = " + str(R_tuple))
+    
+            # check that total size isn't too big before we continue
+            total = len(self.super_cell_a) + len(self.super_cell_b)
+            if (total >= int(self.input.dict['max_atoms'])):
+                raise Exception("Error: interface is too large: " + str(total))
+    
+            # tag the two supercells so that they can be separated later
+            self.super_cell_a.set_tags(1)
+            self.super_cell_b.set_tags(2)
+    
+    
+            # add a vacuum between the layers.
+            if (self.distance is not None):
+                self.super_cell_a.cell[2, 2] += self.distance
+    
+            # =====Debug=====
+            if (self.input.dict['print_debug'] != 'False'):
+                printx("========Super Cell 1========")
+                printx(str(self.super_cell_a.cell))
+                printx("atoms = " + str(len(self.super_cell_a)))
+                printx("========Super Cell 2========")
+                printx(str(self.super_cell_b.cell))
+                printx("atoms = " + str(len(self.super_cell_b)))
+    
+            # stack the supercells on top of each other and set pbc to xy-slab
+            try:
+                self.interface, self.super_cell_a, self.super_cell_b = stack(
+                    self.super_cell_a, self.super_cell_b,
+                    output_strained=True, maxstrain=None)
+            except Exception as err:
+                raise Exception(
+                    "Error in generating interface during the stack step")
+    
+            # set pbc to infinite slab or fully periodic setting
+            if (self.input.dict['full_periodicity'] != 'False'):
+                self.interface.pbc = [1, 1, 1]
+            else:
+                self.interface.pbc = [1, 1, 0]
+    
+            #add explicit vacuum above and below 
+            if (self.input.dict['z_axis_vacuum'] != '0.0'):
+                self.interface = self.z_insert_vacuum(self.interface)
+    
+        else:
+        #if we are reading in a structure, then we get to skip all
+        #the previous stuff
+            self.read_in_structure()
 
         return
 
@@ -321,172 +320,10 @@ class InterfaceSupercell(object):
         """
         rotate the atoms and the cell vectors.
         """
-        cut_cell.rotate('z', rotation, rotate_cell=True)
+        cut_cell.rotate(self.input.dict['angle_axis'], rotation,
+                        rotate_cell=True)
 
         return cut_cell
-
-#    def check_cell_rotation(self, atom_a, atom_b):
-#        """
-#        Translate the top unit cell so that each corner of the unit_cell
-#        is moved to the origin and then the area of overlap with the lower
-#        unit_cell.  Returns the unit cell with the largest overlap area.
-#        """
-#        large_area = atom_a.copy()
-#        largest_area = 0.0
-#        Y_one = (atom_b.cell[0, 0], atom_b.cell[0, 1])
-#        Y_two = (atom_b.cell[1, 0], atom_b.cell[1, 1])
-#        # -1 corresponds with an inversion around X and Y axes
-#        chg = [(1, 1), (-1, 1), (1, -1), (-1, 1)]
-#        position = (1, 1)
-#
-#        for value in (chg):
-#            # modify the cell dimensions and wrap atoms back into cell
-#            atom_a.cell[0, 0] *= value[0]
-#            atom_a.cell[0, 1] *= value[0]
-#            atom_a.cell[1, 0] *= value[1]
-#            atom_a.cell[1, 1] *= value[1]
-#            atom_a.wrap(pbc=(1, 1, 0))
-#            X_one = (atom_a.cell[0, 0], atom_a.cell[0, 1])
-#            X_two = (atom_a.cell[1, 0], atom_a.cell[1, 1])
-#            area = self.convex_intersect(X_one, X_two, Y_one, Y_two)
-#            if (area > largest_area):
-#                large_area = atom_a.copy()
-#                largest_area = area
-#                position = value
-#            # to ensure right-handedness is maintained,
-#            # swap first and second row if only one switch was used
-#        if (position == (-1, 1) or position == (1, -1)):
-#            self.swap_rows(large_area.cell, 0, 1)
-#
-#        return large_area
-#
-#    def convex_intersect(self, X_one, X_two, Y_one, Y_two):
-#        """
-#        use sympy to calculate the area of the overlap of the
-#        parallelograms in the XY-plane of the two unit cells.
-#        """
-#        X_far = (X_one[0] + X_two[0], X_one[1] + X_two[1])
-#        Y_far = (Y_one[0] + Y_two[0], Y_one[1] + Y_two[1])
-#        Origin = (0.0, 0.0)
-#        vertices = []
-#        # Creates the polygons in sympy.  The vertices must be given in
-#        # clockwise or counter-clockwise order.  We do some gymnastics
-#        # to convert our ASE atom objects into sympy objects.
-#        X_vert = [Origin, X_one, X_far, X_two]
-#        Y_vert = [Origin, Y_one, Y_far, Y_two]
-#        poly_a = Polygon(*X_vert)
-#        poly_b = Polygon(*Y_vert)
-#        # returns the points and/or line segments of intersection
-#        intersect = poly_a.intersect(poly_b)
-#        # But because the result isn't always an iterable variable, we
-#        # have to use regex to read out all the points or end points of
-#        # the line segments
-#        rex = re.compile('Point2D\([0-9/0-9 ]*,[0-9/0-9 ]*\)')
-#        found = re.findall(rex, str(intersect))
-#        for i in found:
-#            temp = eval(i)
-#            vertices.append(temp)
-#        # Loop over vertices of polygons to see if any are enclosed in the
-#        # other polygon.
-#        for j in poly_a.vertices:
-#            if poly_b.encloses_point(j):
-#                vertices.append(j)
-#        for k in poly_b.vertices:
-#            if poly_a.encloses_point(k):
-#                vertices.append(j)
-#        # Remove duplicate points in our list of overlap vertices
-#        vertices = list(set(vertices))
-#        # Sort the vertices of the overlap vertices so that
-#        # they are counter-clockwise.
-#        # Create the overlap polygon and return the area
-#        vertices = self.sort_points(vertices)
-#        P_over = Polygon(*vertices)
-#        try:
-#            area = P_over.area
-#        except Exception as err:
-#            area = 0.0
-#
-#        return area
-
-    def sort_points(self, vertices):
-        """
-        Sort a set of points so that they are in counter-clockwise order,
-        starting at (0,0).
-        """
-        ordered = []
-        dict_store = {'0': Point2D(0.0, 0.0)}
-        # calculate the 2D determinant between each point (and origin)
-        # and count up how many are positive.
-        # exclude any i=j and if i or j is the origin.
-        for i in range(len(vertices)):
-            counter = 1
-            if (vertices[i] == Point2D(0.0, 0.0)):
-                continue
-            for j in range(len(vertices)):
-                if (vertices[j] == Point2D(0.0, 0.0)):
-                    continue
-                if (i == j):
-                    continue
-                det = (vertices[i][0] * vertices[j][1] -
-                       vertices[i][1] * vertices[j][0])
-                # if two points are colinear,
-                # set the count so that ordering remains counter-clockwise
-                if (det == 0.0):
-                    if (vertices[i][0] == vertices[j][0]):
-                        if (vertices[i][1] < vertices[j][1]):
-                            counter += 1
-                            continue
-                    elif (vertices[i][1] == vertices[j][1]):
-                        if (vertices[i][0] > vertices[j][0]):
-                            counter += 1
-                            continue
-                    else:
-                        a_val = abs(vertices[i][0] + vertices[i][1])
-                        b_val = abs(vertices[j][0] + vertices[j][1])
-                        if (a_val > b_val):
-                            counter += 1
-                            continue
-                elif (det < 0):
-                    counter += 1
-        # Create a dictionary where the number of positive determinants
-        # is the index and the point is the value
-            dict_store[str(counter)] = vertices[i]
-        for j in range(len(vertices)):
-            ordered.append(dict_store[str(j)])
-
-        return ordered
-
-    def remove_duplicates(self, atom):
-        """
-        remove duplicates to 0.01 accuracy by turning the coordinates into
-        a single string and then removing duplicates
-        """
-        positions = atom.get_positions()
-        reduced_coord = []
-        for i in positions:
-            coord = (str(i[0].round(2)) +
-                     str(i[1].round(2)) + str(i[2].round(2)))
-            reduced_coord.append(coord)
-        dupes = self.find_duplicates(reduced_coord)
-        del atom[dupes]
-
-    def find_duplicates(self, seq, idfun=None):
-        """
-        method for finding duplicates efficiently.
-        """
-        dupes = []
-        if idfun is None:
-            def idfun(x): return x
-        seen = {}
-        result = []
-        for item in range(len(seq)):
-            marker = idfun(seq[item])
-            if marker in seen:
-                dupes.append(item)
-                continue
-            seen[marker] = 1
-            result.append(seq[item])
-        return dupes
 
     def determine_version(self):
         """
@@ -548,7 +385,7 @@ class InterfaceSupercell(object):
             shift = np.matmul(spiral.position, vectors)
             for i in range(len(unit_cell)):
                 atom_prime = np.add(shift, atom_positions[i])
-                if self.in_new_cell(atom_prime, new_cell, 1e-7):
+                if self.in_new_cell(atom_prime, new_cell, 1.0e-9):
                     new_atom = unit_cell[i]
                     new_atom.position = atom_prime
                     super_cell.append(new_atom)
@@ -583,7 +420,6 @@ class InterfaceSupercell(object):
         go through the rejected atoms to find one that is close enough to our
         boundries that we can add it in for edge cases.
         """
-
         for i in range(len(rejects)):
             if self.in_new_cell(rejects[i].position, new_cell, 1e-3):
                 super_cell.append(rejects[i])
@@ -610,3 +446,73 @@ class InterfaceSupercell(object):
             interface.positions[x,2] += vacuum
 
         return interface
+
+    def read_in_structure(self):
+        """
+        Read in a coordinate file and construct a completed interface
+        structure by splitting it in two and populating the ICS.
+        We have to use fake unit cells as they may not be applicable.
+        """
+
+        structure_file = self.input.dict['read_in_file']
+        try:
+            new_atom = ase_read(structure_file)
+        except Exception as err:
+            printx("Error when reading in interface structure")
+            raise Exception(err.args[0])
+
+        #get vertical position of lowest and highest atoms in the cell
+        low_val = np.amin(new_atom.get_positions()[:,2])-0.02
+        high_val = np.amax(new_atom.get_positions()[:,2])+0.02
+        interface_slice = float(self.input.dict['read_in_sep_plane'])
+        #we already checked to make sure that either both are None 
+        #or neither is
+        if self.input.dict['read_in_crys_a_layer_depth'] is not None:
+            a_depth = float(self.input.dict['read_in_crys_a_layer_depth'])
+            b_depth = float(self.input.dict['read_in_crys_b_layer_depth'])
+        #rough guess so we can code below.  Highly recommend users
+        #give the values
+        else:
+            a_depth = new_atom.cell[2,2]/8.0
+            b_depth = a_depth
+
+        #remove vacuum on the extremities by shifting down the atoms
+        #and setting the upper bound of the cell
+        #shift the other slcing planes to match
+        if self.input.dict['read_in_exclude_vacuum'] != 'False':
+            new_atom.positions[:,2] -= low_val
+            new_atom.cell[2,2] = high_val - low_val - 0.02
+            interface_slice -= low_val + 0.01
+
+        #set up the mock-unit cell objects.  We want the 
+        #XY dimensions from the full interface, while setting
+        #the Z dimension to the predefined layer depth
+        new_a_unit = Atoms(pbc = True, cell=new_atom.cell)
+        new_a_unit.cell[2,2] = a_depth
+        new_b_unit = Atoms(pbc = True, cell=new_atom.cell)
+        new_b_unit.cell[2,2] = b_depth
+
+        for i in new_atom:
+            if i.position[2] < (a_depth + low_val):
+                new_a_unit.append(i)
+            if i.position[2] > (high_val - b_depth):
+                new_b_unit.append(i)
+            if i.position[2] < interface_slice:
+                i.tag = 1
+            if i.position[2] >= interface_slice:
+                i.position[2] += self.distance
+                i.tag = 2
+
+        new_atom.cell[2,2] += self.distance
+
+        #populate the class objects
+        self.interface = new_atom.copy()
+        # set pbc to infinite slab or fully periodic setting
+        if (self.input.dict['full_periodicity'] != 'False'):
+            self.interface.pbc = [1, 1, 1]
+        else:
+            self.interface.pbc = [1, 1, 0]
+        self.cut_cell_a = new_a_unit.copy()
+        self.cut_cell_b = new_b_unit.copy()
+
+        return
