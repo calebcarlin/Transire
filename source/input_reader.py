@@ -18,6 +18,8 @@ class ReadInput(object):
                      'crys_b_file': None,
                      'crys_b_surface': None,
                      'crys_b_layers': 3,
+                     'translate_crys_a': '0.0 0.0', 
+                     'translate_crys_b': '0.0 0.0', 
                      'cp2k_input': None,
                      'separation': 0.0,
                      'read_in_structure': 'False',
@@ -121,7 +123,9 @@ class ReadInput(object):
         self.lists = ['angles_list',
                       'search_list',
                       'energy_levels_ET',
-                      'flip_length_scale_bounds'
+                      'flip_length_scale_bounds',
+                      'translate_crys_a', 
+                      'translate_crys_b' 
                       ]
 
         # inputs that are required

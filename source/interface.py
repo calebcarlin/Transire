@@ -102,6 +102,14 @@ class InterfaceSupercell(object):
             except Exception as err:
                 [printx(x) for x in err.args]
                 raise Exception("Too many atoms, skipping to next step")
+            
+            #apply translations if the user specified them.
+            self.super_cell_a.translate(self.input.dict['translate_crys_a']+[0])
+            self.super_cell_a.wrap()
+            self.super_cell_b.translate(self.input.dict['translate_crys_b']+[0])
+            self.super_cell_b.wrap()
+            #xgeox
+            ase_write('super_cell_a.xyz',self.super_cell_a,format='extxyz')
     
             # =====Debug=====
             if (self.input.dict['print_debug'] != 'False'):
