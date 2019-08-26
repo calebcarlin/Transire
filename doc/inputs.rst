@@ -65,6 +65,34 @@ ______________
 **crys_b_layers**
             number of layers in the z direction of the first crystal (default = 3).
 
+**translate_crys_a**
+            list of floats of X and Y distances to trnaslate the lower crystal
+            (default = 0.0 0.0).
+
+**translate_crys_b**
+            list of floats of X and Y distances to trnaslate the upper crystal
+            (default = 0.0 0.0).
+
+**read_in_structure**
+            logical to enable the reading in a coordinate file instead of generating
+            from unit cells. (deault = False)
+
+**read_in_file**
+            file name with path (if needed) to the coordinate file to read in
+
+**read_in_sep_plane**
+            the height on the z-axis of the interface plane
+
+**read_in_exclude_vacuum**
+            logical to remove any empty space on the exterior of the interface in the
+            z directions (default = False)
+
+**read_in_crys_a_layer_depth**
+            height of a single crystalline layer in the lower slab
+
+**read_in_crys_b_layer_depth**
+            height of a single crystalline layer in the upper slab
+
 **separation**
             distance to be added between the two crystals when forming the interface.
 
@@ -112,6 +140,14 @@ ______________
 **calculate_binding_energy**
             Each energy calculation will separately calculate 
 
+**full_periodicity**
+            logical to set the periodicity along the z-axis to true. (default = False)
+
+**z_axis_vacuum**
+            empty space to be added on the external sides of the interface structure
+            along the z-axis.  the value here is divided evenly between the two
+            side (default = 0.0)
+
 
 Search parameters
 _________________
@@ -125,6 +161,7 @@ _________________
                   1) Twist angle search
                   2) Molecule insertion
                   3) Separation optimization
+                  4) Surface splitter
 
             example:  search_list = 1 0 1 2
 
@@ -204,6 +241,10 @@ ______________________
 **angle_write_coord_file**
             switch to enable printing the coordinates of all interface structures
             generated in the twist angle search in the xyz format.  (default = True)
+
+**angle_write_restart**
+            logical to enable the writing of a traj file that can be used for
+            electron transport calculations. (default = True)
 
 **angle_calculate_energy**
             switch to enable calculating the interface energy of each interface
@@ -299,6 +340,51 @@ __________________________________
 **sep_intial_step**
             initial change in separation for each step. (default = 0.1)
 
+Surface Splitter
+________________
+
+**flip_separation**
+            separation to add between the upper and lower slabs. (default = 10.0)
+
+**flip_a_depth**
+            depth of the interfacial region in the lower slab. (default = 1.5)
+
+**flip_b_depth**
+            depth of the interfacial region in the upper slab. (default = 1.5)
+
+**flip_file_name**
+            prefix to use for output files. (default = flip_default)
+
+**flip_n_total_states**
+            total number of random and GPR states to be calculated. (default = 10)
+
+**flip_n_random_states**
+            number of states to generate by random perturbation. (default = 10)
+
+**flip_rand_method**
+            sets the method used for generating new random states. can be
+            either 'single-atom' or 'multi-atom'. (default = multi-atom)
+
+**flip_length_scale**
+            hyperparameter for GPR model. (default = 0.01)
+
+**flip_length_scale_bounds**
+            upper and lower bounds for length scale in GPR model. 
+            (default = 1e-5 1e5)
+
+**flip_n_final_reduction**
+            number of previously located, lowest energy states to include
+            in the local search. (default = 1)
+
+**flip_n_final_passes**
+            number of passes over all of the bits to perform for each
+            local search. (default = 1)
+
+**flip_restart**
+            logical to enable restarting the surface split method. the current
+            state is determined by reading in the state memory file that has
+            the matching 'flip_file_name' (default = False)
+
 CP2K parameters
 _______________
 
@@ -329,18 +415,16 @@ LAMMPS parameters
 _________________
 
 **lammps_input**
-            input file for specifying LAMMPS commands.  The format is a single list declaration
-            of the form:
+            input file for specifying LAMMPS commands.  The format is a plain text document
+            with each command on a new line as is normal for LAMMPS scripts.
 
-            commands=[
-            'entry 1',
-            'entry 2',
+            entry 1
+            entry 2
             ...
-            'entry X'
-            ]
+            entry X
 
-            The first and last lines in the example must be present.  LAMMPS keywords related
-            to defining the system are handled by ASE.  For all available keywords see:
+            LAMMPS keywords related to defining the system are handled by ASE.  
+            For all available keywords see:
             http://lammps.sandia.gov/doc/Section_commands.html
 
 ET parameters
