@@ -57,6 +57,12 @@ class ReadInput(object):
                      'angle_calculate_energy': 'True',
                      'angle_write_restart': 'True',
                      'angle_axis' : 'z',
+                     'angle_symmetric' : 'False',
+                    #angle_asym options not implemented yet
+                     'angle_asym_angles_list' : None,
+                     'angle_asym_angles_stepsize' : None,
+                     'angle_asym_number_of_angles' : None,
+                     'angle_asym_starting_angle' : 0.0,
                      'exclude_coupling': 'False',
                      'energy_levels_ET': None,
                      'restart_file': 'ET_restart_coord',

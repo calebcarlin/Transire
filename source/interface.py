@@ -19,6 +19,7 @@ from ase.io import read as ase_read
 from traceback import print_exc
 import sys
 from .spiral import Hyperspiral
+import warnings
 
 
 class InterfaceSupercell(object):
@@ -92,7 +93,7 @@ class InterfaceSupercell(object):
             # replicate the unit cells so that periodicity is always preserved
             periodic_cell_a, max_coeff_a = self.protect_periodicity(unit_cell_a)
             periodic_cell_b, max_coeff_b = self.protect_periodicity(unit_cell_b)
-    
+   
             # populate the new cell using cookie cutter method on generated lattice
             try:
                 self.super_cell_a = self.populate_new_cell(
@@ -108,8 +109,6 @@ class InterfaceSupercell(object):
             self.super_cell_a.wrap()
             self.super_cell_b.translate(self.input.dict['translate_crys_b']+[0])
             self.super_cell_b.wrap()
-            #xgeox
-            ase_write('super_cell_a.xyz',self.super_cell_a,format='extxyz')
     
             # =====Debug=====
             if (self.input.dict['print_debug'] != 'False'):
@@ -290,7 +289,7 @@ class InterfaceSupercell(object):
             max_coeff[axis1] = max(abs(max_1_coeff), max_coeff[axis1])
             max_coeff[axis2] = max(abs(max_2_coeff), max_coeff[axis2])
 
-        return abs(matrix), max_coeff
+        return matrix, max_coeff
 
     def check_zero_diag(self, cell_matrix):
         """
@@ -328,7 +327,7 @@ class InterfaceSupercell(object):
         """
         rotate the atoms and the cell vectors.
         """
-        cut_cell.rotate(self.input.dict['angle_axis'], rotation,
+        cut_cell.rotate(a=rotation, v=self.input.dict['angle_axis'],
                         rotate_cell=True)
 
         return cut_cell
@@ -347,11 +346,11 @@ class InterfaceSupercell(object):
         """
         quick function to see an atom is inside a cell with the given error.
         """
-        if (atom[0] < 0.0 - error) or (atom[0] > (cell[0, 0] - error)):
+        if (atom[0] < -error) or (atom[0] > (cell[0, 0] - error)):
             return False
-        if (atom[1] < 0.0 - error) or (atom[1] > (cell[1, 1] - error)):
+        if (atom[1] < -error) or (atom[1] > (cell[1, 1] - error)):
             return False
-        if (atom[2] < 0.0 - error) or (atom[2] > (cell[2, 2] - error)):
+        if (atom[2] < -error) or (atom[2] > (cell[2, 2] - error)):
             return False
         return True
 
@@ -393,7 +392,11 @@ class InterfaceSupercell(object):
             shift = np.matmul(spiral.position, vectors)
             for i in range(len(unit_cell)):
                 atom_prime = np.add(shift, atom_positions[i])
-                if self.in_new_cell(atom_prime, new_cell, 1.0e-9):
+                #check if the new atom is in the cell and make sure
+                #that there isn't already an atom at the new position
+                if (self.in_new_cell(atom_prime, new_cell, 1.0e-9)
+                     and not np.any(
+                     np.equal(atom_prime,super_cell.positions).all(axis=1))):
                     new_atom = unit_cell[i]
                     new_atom.position = atom_prime
                     super_cell.append(new_atom)

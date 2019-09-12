@@ -43,9 +43,10 @@ class AngleSearch(object):
         self.surf_b = surf_b
         self.file = self.input.dict['output_file']
         self.is_ras = (int(self.input.dict['ras_depth']) != 1)
+        self.symm = self.input.dict['angle_symmetric'] != 'False'
 
     def angle_search(self):
-        """Main driver for twist angle search."""
+        """Main driver for angle search."""
         temp_storage = ICS()
         lowest_energy = self.initial.copy()
 
@@ -60,7 +61,7 @@ class AngleSearch(object):
             self.input.dict['angle_write_energy_file'] = 'False'
             ras_array = [[] for y in range(2)]
 
-        # check to read in angles from a previous RAD run
+        # check to read in angles from a previous RAS run
         if self.input.dict['read_in_ras_file'] is not None:
             try:
                 self.input.dict['angles_list'] = self.read_in_angle_ras_file()
@@ -71,7 +72,7 @@ class AngleSearch(object):
                 sys.exit(1)
 
         # set up main output with instant printing (no buffer)
-        printx('Beginning twist angle search\n', self.file)
+        printx('Beginning angle search\n', self.file)
         printx('Surface Indices : ' + str(self.surf_a) +
                '/' + str(self.surf_b) + '\n', self.file)
 
@@ -87,23 +88,23 @@ class AngleSearch(object):
             self.input.dict['ras_factor'] = len(ras_array[0])
 
         # pull angles to use for RAS
-        if (len(ras_array[0]) < int(self.input.dict['ras_factor'])
-                or not(self.is_ras)):
-            printx("Number of acceptable interfaces found is less than"
-                   "'ras_factor'")
-            printx("Suggest either increasing 'max_atoms' or reducing"
-                   "'ras_factor'")
-            self.input.dict['angles_stepsize'] = stepsize_backup
-            self.input.dict['angles_list'] = angle_list_backup
-            self.input.dict['number_of_angles'] = number_of_angles_backup
-            self.input.dict['starting_angle'] = start_angle_backup
-            return
-        else:
-            while len(ras_array[0]) > int(self.input.dict['ras_factor']):
-                largest = max(
-                    xrange(len(ras_array[1])), key=ras_array[1].__getitem__)
-                ras_array[1].pop(largest)
-                ras_array[0].pop(largest)
+        if self.is_ras:
+            if len(ras_array[0]) < int(self.input.dict['ras_factor']):
+                printx("Number of acceptable interfaces found is less than"
+                    "'ras_factor'")
+                printx("Suggest either increasing 'max_atoms' or reducing"
+                    "'ras_factor'")
+                self.input.dict['angles_stepsize'] = stepsize_backup
+                self.input.dict['angles_list'] = angle_list_backup
+                self.input.dict['number_of_angles'] = number_of_angles_backup
+                self.input.dict['starting_angle'] = start_angle_backup
+                return
+            else:
+                while len(ras_array[0]) > int(self.input.dict['ras_factor']):
+                    largest = max(
+                        range(len(ras_array[1])), key=ras_array[1].__getitem__)
+                    ras_array[1].pop(largest)
+                    ras_array[0].pop(largest)
 
         # If using RAS, begin the repeated searches for RAS level 2 through
         # 'ras_depth'
@@ -126,7 +127,7 @@ class AngleSearch(object):
                     temp_storage, lowest_energy)
                 try:
                     smallest = min(
-                        xrange(len(replace_array[1])),
+                        range(len(replace_array[1])),
                         key=replace_array[1].__getitem__)
                     ras_temp[0].append(replace_array[0].pop(smallest))
                     ras_temp[1].append(replace_array[1].pop(smallest))
@@ -140,10 +141,9 @@ class AngleSearch(object):
 
         # Setup energy vs angle file
         if (self.input.dict['angle_write_energy_file'] == 'True'):
-            angle_energy = open(
-                self.input.dict['project_name'] + '.a_e.log', 'a', 0)
-            angle_energy.write('===================\n\n')
-            angle_energy.close()
+            angle_energy = (
+                self.input.dict['project_name'] + '.a_e.log')
+            printx('===================\n\n',angle_energy)
         # If using RAS, resets the input values and recovers the lowest energy
         # interface located to pass back.
         if (int(self.input.dict['ras_depth']) != 1):
@@ -159,7 +159,7 @@ class AngleSearch(object):
                     'angle = ' + str(ras_array[0][l]) + ' size = ' +
                     str(ras_array[1][l]), self.file)
             printx('\n', self.file)
-        # reset values in case twist_search is called more than once
+        # reset values in case angle search is called more than once
         self.input.dict['angles_stepsize'] = stepsize_backup
         self.input.dict['angles_list'] = angle_list_backup
         self.input.dict['number_of_angles'] = number_of_angles_backup
@@ -181,9 +181,9 @@ class AngleSearch(object):
                 printx('Error: additional information for angles needed in'
                        'the input file.')
                 sys.exit(1)
-            temp_array = []
             angle = float(self.input.dict['starting_angle'])
-            for i in range(int(self.input.dict['number_of_angles'])):
+            temp_array = [angle]
+            for i in range(int(self.input.dict['number_of_angles'])-1):
                 angle += float(self.input.dict['angles_stepsize'])
                 temp_array.append(angle)
             self.input.dict['angles_list'] = temp_array
@@ -194,31 +194,37 @@ class AngleSearch(object):
         temp_angles = [[] for y in range(2)]
         # setup energy output file header
         if (self.input.dict['angle_write_energy_file'] == 'True'):
-            angle_energy = open(
-                self.input.dict['project_name'] + '.a_e.log', 'a')
-            angle_energy.write("===================\nSurface : " +
-                               str(self.surf_a) + '/' +
-                               str(self.surf_b) + '\n')
-            angle_energy.write(
-                "===================\nAngle   Energy   Atoms\n\n")
-            angle_energy.close()
+            angle_energy = (
+                self.input.dict['project_name'] + '.a_e.log')
+            printx("===================\nSurface : " +
+                    str(self.surf_a) + '/' +
+                    str(self.surf_b) + '\n',angle_energy)
+            printx(
+                "===================\nAngle   Energy   Atoms\n\n",
+                angle_energy)
 
         # loop over angles
         for j in self.input.dict['angles_list']:
             printx('===========\n', self.file)
             printx('beginning rotation of ' +
                    str(j) + ' degrees:\n', self.file)
-            Backup_atom = self.initial.unit_cell_a.copy()
-            radians = pi * j / 180.0
+            Backup_atom_a = self.initial.unit_cell_a.copy()
+            Backup_atom_b = self.initial.unit_cell_b.copy()
+            #radians = pi * j / 180.0
+            #New format in ASE requires passing in degrees instead of radians
             self.interface.cut_cell_a = self.interface.rotate_cell(
-                self.initial.unit_cell_a, radians).copy()
+                self.initial.unit_cell_a, j).copy()
+            if self.symm:
+                self.interface.cut_cell_b = self.interface.rotate_cell(
+                    self.initial.unit_cell_b, -j).copy()
             try:
                 self.interface.generate_interface()
             except Exception as err:
                 [printx(x, self.file) for x in err.args]
                 if self.input.dict['print_debug'] != 'False':
                     print_exc()
-                self.initial.unit_cell_a = Backup_atom.copy()
+                self.initial.unit_cell_a = Backup_atom_a.copy()
+                self.initial.unit_cell_b = Backup_atom_b.copy()
                 continue
             printx('printing output: angle = ' + str(j) + ' atoms = ' +
                    str(len(self.interface.interface)) + '\n', self.file)
@@ -281,14 +287,11 @@ class AngleSearch(object):
                     lowest_energy = temp_storage.copy()
                 if (self.input.dict['angle_write_energy_file'] == 'True'
                         and not Exist):
-                    angle_energy = open(
-                        self.input.dict['project_name'] + '.a_e.log', 'a')
-                    angle_energy.write(str(j) + '   ' +
-                                       str(temp_storage.energy)
-                                       + '    ' +
-                                       str(len(self.interface.interface))
-                                       + '\n')
-                    angle_energy.close()
+                    printx(str(j) + '   ' +
+                            str(temp_storage.energy)
+                            + '    ' +
+                            str(len(self.interface.interface))
+                            + '\n',angle_energy)
             # set up information in case we didn't run the energy calculation
             else:
                 temp_storage.atom = self.interface.interface.copy()
@@ -301,6 +304,7 @@ class AngleSearch(object):
                 temp_storage.unit_cell_a = self.interface.cut_cell_a.copy()
                 temp_storage.unit_cell_b = self.interface.cut_cell_b.copy()
                 lowest_energy = temp_storage.copy()
+                lowest_energy.energy = backup_initial.energy
             # write the xyz file
             if (self.input.dict['angle_write_coord_file'] == 'True'):
                 write_storage = ICS()
@@ -311,7 +315,8 @@ class AngleSearch(object):
                 write_storage.file_name = (self.input.dict['project_name']
                                            + '.' + str(j))
                 write_xyz(write_storage)
-            self.initial.unit_cell_a = Backup_atom.copy()
+            self.initial.unit_cell_a = Backup_atom_a.copy()
+            self.initial.unit_cell_b = Backup_atom_b.copy()
 
         printx("\nLowest Energy configuration correspond to angle " +
                str(lowest_energy.step) + '\n', self.file)

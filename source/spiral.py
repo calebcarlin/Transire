@@ -26,7 +26,7 @@ class Hyperspiral(object):
         self.max_x = max_values[0]
         self.max_y = max_values[1]
         self.max_z = max_values[2]
-        self.z_range = range(-self.max_z, self.max_z + 1)
+        self.z_range = range(self.max_z+1, -self.max_z, -1)
         self.z_spot = 0
         self.position = [0, 0, 0]
         self.movement = self.spiral_movements()

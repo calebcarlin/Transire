@@ -96,7 +96,7 @@ class ConstrainedSearch(object):
                      '_' + str(self.surf_b[2]))
         # Create a file to track the Markov steps and the simplest steps need
         # to reproduce each configuration
-        file_2 = (self.initial.file_name + '.MC.log')
+        file_2 = (self.input.dict['project_name'] + '.MC.log')
         printx('==========MC steps==========', file_2)
         printx(file_name, file_2)
         printx('============================', file_2)
@@ -122,7 +122,7 @@ class ConstrainedSearch(object):
                     temporary_store.unit_cell_a, translate_array)
                 mc_track[0][0] += translate_array[0]
                 mc_track[0][1] += translate_array[1]
-                printx('step = ' + str(i) + '  Translation : (' +
+                printx('Step = ' + str(i+1) + '  Translation : (' +
                        str(translate_array[0]) + ',' + str(translate_array[1])
                        + ')', file_2)
                 self.print_mc_coordinates(mc_track, file_2)
@@ -132,7 +132,7 @@ class ConstrainedSearch(object):
                 self.interface.cut_cell_a = self.interface.rotate_cell(
                     temporary_store.unit_cell_a, rotation)
                 mc_track[1][0] += rotation * 180.0 / pi
-                printx('step = ' + str(i) + '  Rotation : (' +
+                printx('Step = ' + str(i+1) + '  Rotation : (' +
                        str(rotation * 180.0 / pi) + ')', file_2)
                 self.print_mc_coordinates(mc_track, file_2)
 
@@ -151,17 +151,18 @@ class ConstrainedSearch(object):
                                          + '.' + str(i) + '.' + file_name)
             temporary_store.step = i
             temporary_store.unit_cell_a = self.interface.cut_cell_a
-            EnergyCalc(
-                self.input, self.input.dict['energy_method'],
-                temporary_store, 'run')
+            try:
+                EnergyCalc(
+                    self.input, self.input.dict['energy_method'],
+                    temporary_store, 'run')
+            except Exception as err:
+                [printx(x) for x in err.args]
             if self.input.dict['calculate_binding_energy'] != 'False':
                 temporary_store.energy = calculate_binding_energy(
                     temporary_store, self.input)
-            printx('new energy')
-            printx(str(temporary_store.energy))
+            printx('New Energy = {}'.format(temporary_store.energy),file_2)
+            printx('\n---------------------\n',file_2)
 
-            printx("energy_old =" + str(energy_old))
-            printx("energy new = " + str(temporary_store.energy))
         # If first step for this interface, populate configuration storage
             if (self.lowest_energy_conf.energy is None):
                 printx("Error occured in constrained search")
@@ -206,8 +207,7 @@ class ConstrainedSearch(object):
         from the Markov Chain
         """
         rot = points[1][0] % 360.0
-        printx("Translate X : %5f  Y : %5f  Rotate %5f \n" %
+        printx("Translate X : %5f  Y : %5f  Rotate %5f" %
                (points[0][0], points[0][1], rot), file)
-        printx("---------------------\n", file)
 
         return

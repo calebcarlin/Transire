@@ -24,6 +24,7 @@ from .angle_search import AngleSearch
 from .insert_molecule import InsertMolecule
 from .separation_optimizer import SeparationOpt
 from .surface_splitter import surface_atom_flip
+import warnings
 
 def main():
     """
@@ -59,6 +60,8 @@ def main():
 
 # building initial structure
 # ==========================
+    warnings.filterwarnings("ignore", category=UserWarning,
+                            module='ase.io')
     if input.dict['read_in_structure'] == "False":
         Crystal1 = read(input.dict['crys_a_file'])
         Crystal2 = read(input.dict['crys_b_file'])

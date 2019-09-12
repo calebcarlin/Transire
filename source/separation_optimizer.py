@@ -51,7 +51,8 @@ class SeparationOpt(object):
         energy_1 = temp_structure.energy
         delta_d = float(self.input.dict['sep_guess']) - self.initial_sep
         dist = float(self.input.dict['sep_guess'])
-        self.direction = cmp(delta_d, 0.0)
+        #Python3 replacement for cmp() 
+        self.direction = (delta_d > 0.0)-(delta_d < 0.0)
 
         for i in range(int(self.input.dict['sep_max_steps'])):
             # translate the atoms on one side

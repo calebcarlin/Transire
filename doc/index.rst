@@ -22,6 +22,7 @@ Contents
    source/constrained_search
    source/insert_molecule
    source/separation_optimizer
+   source/surface_split
    source/utilities
    tests
    license

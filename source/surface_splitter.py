@@ -135,7 +135,6 @@ class surface_atom_flip(object):
                 self.state_memory = np.append(self.state_memory,
                     [[new_int,split_int.energy]],0)
                 split_int.file_name = (self.input.dict['flip_file_name']+
-                                    "."+str(self.current_state)+
                                     "."+str(new_int))
                 write_xyz(split_int)
                 np.savetxt(
@@ -154,8 +153,6 @@ class surface_atom_flip(object):
         #of the lowest energy state
         #We skip this if there are no GPR steps
         if not (total_states <= random_states):
-            print(total_states)
-            print(random_states)
             if (self.current_state >= total_states and 
                 self.input.dict['flip_restart'] != 'False'):
                 gpr = self.gpr_state(int_array,split_int.atom)

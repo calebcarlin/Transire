@@ -65,14 +65,6 @@ ______________
 **crys_b_layers**
             number of layers in the z direction of the first crystal (default = 3).
 
-**translate_crys_a**
-            list of floats of X and Y distances to trnaslate the lower crystal
-            (default = 0.0 0.0).
-
-**translate_crys_b**
-            list of floats of X and Y distances to trnaslate the upper crystal
-            (default = 0.0 0.0).
-
 **read_in_structure**
             logical to enable the reading in a coordinate file instead of generating
             from unit cells. (deault = False)
@@ -230,6 +222,16 @@ ______________________
 
             angles_to_iter = 1
             number_of_angles = 60
+
+**angle_axis**
+            sets the axis of rotation by specify the axis as x, y, or z.
+            (default = z)
+
+**angle_symmetric**
+            switch enable applying the rotation to both crystals in a 
+            symmetric way.  if the angle of rotation applied to crystal a
+            is 40 degrees, then crystal b will be rotated around the same
+            axis by -40 degrees. (default = False)
 
 **starting_angle**
             angle to start with when iterating over angles (default = 0.0)
