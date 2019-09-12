@@ -1,11 +1,11 @@
 .. module:: source.angle_search
 
-The Twist Angle Search
+The Rotation Angle Search
 ======================
 
-Class for generating interface structures by rotating one crsytal around the
-z-axis relative to the other crystal.  This class can be used in a combination
-of three ways:
+Class for generating interface structures by rotating one crsytal
+relative to the other crystal or symmetrically rotating both.
+This class can be used in a combination of three ways:
 
     1) Calculate the energy of each new configuration and return the
        configuration with the lowest energy per interface area
@@ -27,7 +27,12 @@ The angles can be specified in one of three ways:
        reducing angle search option to read in the list of angles.
 
 All angles are specified in degrees and all rotations occur relative to the
-starting configuration
+starting configuration.  The axis of rotation is set with the keyword
+angle_axis and is given as x, y, or z.  If the keyword, angle_symmetric, is
+set to true, then the rotations are applied to both crystals around the same
+axis with the direction of rotation in opposite directions.  For example,
+a symmetric rotation of crystal_a of 40 degrees includes rotating crystal_b
+by -40 degrees.
 
 The 'reducing angle search' or RAS automates the process of finding the angles
 in a range that result in interfaces with the fewest number of total atoms.

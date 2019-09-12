@@ -16,8 +16,9 @@ from traceback import print_exc
 
 class AngleSearch(object):
     """
-    Class for rotating one side of the interface around the axis parallel
-    to the interface.
+    Class for rotating one side of the interface around an axis aligned
+    with one of the cartesian axes or by rotating both crystals around
+    a common axis in opposite directions.
 
     Paramters:
 

@@ -150,7 +150,7 @@ _________________
             is passed to the next search.  Availiable searches:
 
                   0) Markov chain search
-                  1) Twist angle search
+                  1) Rotation angle search
                   2) Molecule insertion
                   3) Separation optimization
                   4) Surface splitter
@@ -203,7 +203,7 @@ _______________________
             logical for using a previous MC step configuration at the start of the MC search 
             (default = False)
 
-Twist Angle parameters
+Rotation Angle parameters
 ______________________
 
 **angles_list**
@@ -217,7 +217,7 @@ ______________________
             number_of_angles
 
 **number_of_angles**
-            number of angles to include in twist angle search when not using
+            number of angles to include in rotation angle search when not using
             angles_to_gen.  example:
 
             angles_to_iter = 1
@@ -242,7 +242,7 @@ ______________________
 
 **angle_write_coord_file**
             switch to enable printing the coordinates of all interface structures
-            generated in the twist angle search in the xyz format.  (default = True)
+            generated in the rotation angle search in the xyz format.  (default = True)
 
 **angle_write_restart**
             logical to enable the writing of a traj file that can be used for
@@ -254,8 +254,8 @@ ______________________
 
 **angle_return_initial**
             switch to disable returning the lowest energy configuration from the
-            twist angle search.  This is useful when performing multiple twist angle
-            searches or multiple surfaces. (default = False)
+            rotation angle search.  This is useful when performing multiple 
+            rotation angle searches or multiple surfaces. (default = False)
 
 **angle_optimize_separation**
             switch to enable separation optimizer after each rotation.
@@ -265,7 +265,7 @@ ______________________
             number of layers to perform in Reducing Angle Search that reduces the number of
             energy calculations by searching a range of rotations to find the resulting 
             interface structures that have the fewest atoms.  ras_depth = 1 is equivalent
-            to a normal Twist Angle search.  Each subsequent layer involves an angle
+            to a normal Rotation Angle search.  Each subsequent layer involves an angle
             search around the angles that result in the smallest interface structures found
             in the previous layer using a stepsize one order of magnitude smaller than the
             previous layer.  (default = 1)
