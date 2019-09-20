@@ -12,7 +12,7 @@ from math import pi, floor
 from ase.build import cut, make_supercell
 from ase.build import stack, surface
 from .utilities import lcm, printx, angle_between, surface_from_ase
-from .utilities import almost_zero
+from .utilities import almost_zero,invert_cell
 from .utilities import InterfaceConfigStorage as ICS
 from ase.io import write as ase_write
 from ase.io import read as ase_read
@@ -83,10 +83,10 @@ class InterfaceSupercell(object):
     
             # =====Debug=====
             if (self.input.dict['print_debug'] != 'False'):
-                printx("========Starting Cell 1========")
+                printx("========Starting Cell a========")
                 printx(str(unit_cell_a.cell))
                 printx("atoms = " + str(len(unit_cell_a)))
-                printx("========Starting Cell 2========")
+                printx("========Starting Cell b========")
                 printx(str(unit_cell_b.cell))
                 printx("atoms = " + str(len(unit_cell_b)))
     
@@ -95,27 +95,34 @@ class InterfaceSupercell(object):
             periodic_cell_b, max_coeff_b = self.protect_periodicity(unit_cell_b)
    
             # populate the new cell using cookie cutter method on generated lattice
-            try:
-                self.super_cell_a = self.populate_new_cell(
-                    unit_cell_a, periodic_cell_a, max_coeff_a)
-                self.super_cell_b = self.populate_new_cell(
-                    unit_cell_b, periodic_cell_b, max_coeff_b)
-            except Exception as err:
-                [printx(x) for x in err.args]
-                raise Exception("Too many atoms, skipping to next step")
+#            try:
+            self.super_cell_a = self.populate_new_cell(
+                unit_cell_a, periodic_cell_a, max_coeff_a)
+            self.super_cell_b = self.populate_new_cell(
+                unit_cell_b, periodic_cell_b, max_coeff_b)
+#            except Exception as err:
+#                [printx(x) for x in err.args]
+#                raise Exception("Too many atoms, skipping to next step")
             
             #apply translations if the user specified them.
-            self.super_cell_a.translate(self.input.dict['translate_crys_a']+[0])
+            self.super_cell_a.translate(self.input.dict['translate_crys_a'])
             self.super_cell_a.wrap()
-            self.super_cell_b.translate(self.input.dict['translate_crys_b']+[0])
+            self.super_cell_b.translate(self.input.dict['translate_crys_b'])
             self.super_cell_b.wrap()
+            #apply inversion if user specified them.
+            if (np.any(np.asarray(self.surface_a) <0)):
+                basis = [1 if x>=0 else -1 for x in np.asarray(self.surface_a)]
+                self.super_cell_a = invert_cell(self.super_cell_a,basis)
+            if (np.any(np.asarray(self.surface_b) <0)):
+                basis = [1 if x>=0 else -1 for x in np.asarray(self.surface_b)]
+                self.super_cell_b = invert_cell(self.super_cell_b,basis)
     
             # =====Debug=====
             if (self.input.dict['print_debug'] != 'False'):
-                printx("========Ortho Cell 1========")
+                printx("========Ortho Cell a========")
                 printx(str(self.super_cell_a.cell))
                 printx("atoms = " + str(len(self.super_cell_a)))
-                printx("========Ortho Cell 2========")
+                printx("========Ortho Cell b========")
                 printx(str(self.super_cell_b.cell))
                 printx("atoms = " + str(len(self.super_cell_b)))
     
@@ -158,10 +165,10 @@ class InterfaceSupercell(object):
     
             # =====Debug=====
             if (self.input.dict['print_debug'] != 'False'):
-                printx("========Super Cell 1========")
+                printx("========Super Cell a========")
                 printx(str(self.super_cell_a.cell))
                 printx("atoms = " + str(len(self.super_cell_a)))
-                printx("========Super Cell 2========")
+                printx("========Super Cell b========")
                 printx(str(self.super_cell_b.cell))
                 printx("atoms = " + str(len(self.super_cell_b)))
     
@@ -371,7 +378,8 @@ class InterfaceSupercell(object):
         atoms = int(round(float(len(unit_cell)) * new_volume / volume))
         # quick check to see if the new cell will have too many atoms
         if (atoms > int(self.input.dict['max_atoms'])):
-            raise Exception("too many atoms in supercell")
+            raise Exception("too many atoms in supercell with {} atoms".format(
+                    atoms))
         vectors = np.asarray(unit_cell.cell)
         spiral = Hyperspiral(max_coeff)
         atom_positions = unit_cell.get_positions()

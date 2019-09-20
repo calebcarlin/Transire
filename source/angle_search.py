@@ -16,9 +16,8 @@ from traceback import print_exc
 
 class AngleSearch(object):
     """
-    Class for rotating one side of the interface around an axis aligned
-    with one of the cartesian axes or by rotating both crystals around
-    a common axis in opposite directions.
+    Class for rotating one side of the interface around the axis parallel
+    to the interface.
 
     Paramters:
 
@@ -183,10 +182,10 @@ class AngleSearch(object):
                        'the input file.')
                 sys.exit(1)
             angle = float(self.input.dict['starting_angle'])
-            temp_array = [angle]
+            temp_array = [round(angle,6)]
             for i in range(int(self.input.dict['number_of_angles'])-1):
                 angle += float(self.input.dict['angles_stepsize'])
-                temp_array.append(angle)
+                temp_array.append(round(angle,6))
             self.input.dict['angles_list'] = temp_array
 
     def loop_over_angles(self, temp_storage, lowest_energy):
@@ -217,7 +216,9 @@ class AngleSearch(object):
                 self.initial.unit_cell_a, j).copy()
             if self.symm:
                 self.interface.cut_cell_b = self.interface.rotate_cell(
-                    self.initial.unit_cell_b, -j).copy()
+                    self.initial.unit_cell_b, -radians).copy()
+            self.interface.surface_a = self.surf_a
+            self.interface.surface_b = self.surf_b
             try:
                 self.interface.generate_interface()
             except Exception as err:

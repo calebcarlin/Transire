@@ -82,7 +82,12 @@ def main():
             sys.exit(1)
 
     lowest_energy_config = ICS()
-    lowest_energy_config.atom = BB.interface.copy()
+    if BB.interface == None:
+        printx("WARNING: initial structure failed to be created."+
+               "  Using placeholder.")
+        lowest_energy_config.atom = Atoms(pbc=True)
+    else:
+        lowest_energy_config.atom = BB.interface.copy()
     lowest_energy_config.file_name = input.dict['project_name'] + '.initial'
     lowest_energy_config.unit_cell_a = BB.cut_cell_a
     lowest_energy_config.unit_cell_b = BB.cut_cell_b

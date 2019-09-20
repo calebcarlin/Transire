@@ -318,6 +318,19 @@ def ext_gcd(a, b):
         x, y = ext_gcd(b, a % b)
         return y, x - y * (a // b)
 
+def invert_cell(atoms,basis):
+    """
+    utility to invert the atoms in a unit cell to account for
+    negative miller indices.
+    """
+    mid_lines = np.diag(atoms.cell)/2.0
+    for i in atoms:
+        for j in range(3):
+            i.position[j] = mid_lines[j]+basis[j]*(
+                i.position[j]-mid_lines[j])
+    
+    return atoms
+
 
 def almost_zero(number):
     """
